@@ -17,6 +17,12 @@ View your app in AI Studio: https://ai.studio/apps/drive/1BiUaefhW9gLa_57MuESbb5
 2. Run the app:
    `npm run dev`
 
+## Gestão protegida
+
+- Para acessar a área de Gestão, crie um login com e-mail e senha (mínimo de 8 caracteres).
+- As credenciais são armazenadas localmente em um cofre criptografado e as submissões ficam vinculadas ao usuário autenticado.
+- Use "Recuperar senha" para gerar uma senha provisória enviada ao e-mail cadastrado; ao entrar com ela, cadastre uma nova.
+
 ## Deploy to Vercel
 
 - Build command: `npm run build`

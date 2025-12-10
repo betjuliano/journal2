@@ -5,11 +5,13 @@ import FilterBar from './components/FilterBar';
 import JournalTable from './components/JournalTable';
 import JournalModal from './components/JournalModal';
 import SubmissionManager from './components/SubmissionManager';
+import AuthGate from './components/AuthGate';
 import { mapJournalsFromJson, parseJournalCSV, RawJournalData } from './services/data';
 import rawData from './data/journalsData.json';
 import { FilterState, Journal } from './types';
 
 const STORAGE_KEY = 'journalscope_db_v2';
+const USER_SESSION_KEY = 'journalscope_session_user';
 const MAX_IMPORT_SIZE_BYTES = 2 * 1024 * 1024; // 2MB safeguard for CSV uploads
 const ALLOWED_IMPORT_TYPES = ['text/csv', 'application/vnd.ms-excel', 'text/plain'];
 const initialJournalsData: Journal[] = mapJournalsFromJson(rawData as RawJournalData[]);
@@ -78,6 +80,12 @@ function App() {
 
   const [selectedJournal, setSelectedJournal] = useState<Journal | null>(null);
   const [submissionJournalName, setSubmissionJournalName] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(USER_SESSION_KEY);
+    }
+    return null;
+  });
 
   useEffect(() => {
     if (darkMode) {
@@ -90,6 +98,22 @@ function App() {
   }, [darkMode]);
 
   const toggleTheme = () => setDarkMode(!darkMode);
+
+  const handleAuthenticated = (email: string) => {
+    setCurrentUser(email);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(USER_SESSION_KEY, email);
+    }
+    setCurrentView('submissions');
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(USER_SESSION_KEY);
+    }
+    setCurrentView('journals');
+  };
 
   const handleSubmitToJournal = (journalName: string) => {
     setSubmissionJournalName(journalName);
@@ -198,10 +222,16 @@ function App() {
         )}
 
         {currentView === 'submissions' && (
-          <SubmissionManager
-            initialJournalName={submissionJournalName}
-            onClearInitialJournal={() => setSubmissionJournalName(null)}
-          />
+          currentUser ? (
+            <SubmissionManager
+              initialJournalName={submissionJournalName}
+              onClearInitialJournal={() => setSubmissionJournalName(null)}
+              userEmail={currentUser}
+              onLogout={handleLogout}
+            />
+          ) : (
+            <AuthGate onAuthenticated={handleAuthenticated} />
+          )
         )}
       </main>
 
