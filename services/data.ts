@@ -1,7 +1,6 @@
 // src/services/data.ts
 import { Journal, CapesRating } from '../types';
 
-// --- Interface para o JSON que vem do Python ---
 export interface RawJournalData {
   JOURNAL: string;
   BASE?: string;
@@ -19,7 +18,11 @@ export interface RawJournalData {
   SCIELO?: string;
 }
 
-// Helper: Determina nota CAPES
+const sanitizeString = (value: string | number | null | undefined, maxLength = 200): string => {
+  if (value === null || value === undefined) return '';
+  return value.toString().replace(/^"|"$/g, '').trim().slice(0, maxLength);
+};
+
 const calculateCapes = (abdc: string, abs: string, sjrQ: string, jcrQ: string): { rating: CapesRating, points: number } => {
   const normAbdc = abdc ? abdc.toString().trim().toUpperCase() : '';
   const normAbs = abs ? abs.toString().trim() : '';
@@ -41,7 +44,6 @@ const calculateCapes = (abdc: string, abs: string, sjrQ: string, jcrQ: string): 
   return { rating: CapesRating.I, points: 0 };
 };
 
-// Helper: Converte número de forma segura (aceita string "0,50" ou number 0.50)
 const parseNumber = (val: string | number | null | undefined): number | null => {
   if (val === null || val === undefined || val === '') return null;
   if (typeof val === 'number') return val;
@@ -55,20 +57,18 @@ const parseNumber = (val: string | number | null | undefined): number | null => 
   return null;
 };
 
-// --- FUNÇÃO PRINCIPAL ---
 export const mapJournalsFromJson = (jsonData: RawJournalData[]): Journal[] => {
   return jsonData.map((item, index) => {
-    // Tratamento seguro de nulos com ?.toString()
-    const name = item.JOURNAL ? item.JOURNAL.toString().replace(/^"|"$/g, '') : 'Unknown Journal';
-    const abdc = item.ABDC ? item.ABDC.toString() : '';
-    const abs = item.ABS ? item.ABS.toString() : '';
-    const sjr_q = item.SJR ? item.SJR.toString() : '';
-    const jcr_q = item.JCR ? item.JCR.toString() : '';
+    const name = sanitizeString(item.JOURNAL, 300) || 'Unknown Journal';
+    const abdc = sanitizeString(item.ABDC, 10);
+    const abs = sanitizeString(item.ABS, 10);
+    const sjr_q = sanitizeString(item.SJR, 5);
+    const jcr_q = sanitizeString(item.JCR, 5);
 
-    const rawWiley = item.WILEY ? item.WILEY.toString().toUpperCase() : '';
+    const rawWiley = sanitizeString(item.WILEY, 20).toUpperCase();
     const is_wiley = rawWiley.includes('SIM') || rawWiley === 'W' || rawWiley.includes('WILEY');
-    
-    const rawScielo = item.SCIELO ? item.SCIELO.toString().toUpperCase() : '';
+
+    const rawScielo = sanitizeString(item.SCIELO, 20).toUpperCase();
     const is_scielo = rawScielo.includes('SIM');
 
     const capesInfo = calculateCapes(abdc, abs, sjr_q, jcr_q);
@@ -76,8 +76,8 @@ export const mapJournalsFromJson = (jsonData: RawJournalData[]): Journal[] => {
     return {
       id: index,
       journal_name: name,
-      issn_print: item.ISSN ? item.ISSN.toString() : '',
-      issn_e: item["ISSN Online"] ? item["ISSN Online"].toString() : '',
+      issn_print: sanitizeString(item.ISSN, 50),
+      issn_e: sanitizeString(item["ISSN Online"], 50),
       publisher: is_wiley ? 'Wiley' : 'N/A',
       abdc,
       abs,
@@ -95,9 +95,40 @@ export const mapJournalsFromJson = (jsonData: RawJournalData[]): Journal[] => {
   });
 };
 
-// Mantenha essa função vazia ou legada caso ainda queira usar o botão de upload de CSV antigo,
-// mas recomendo remover o botão de upload se for usar o JSON fixo.
+const cleanCell = (cell: string): string => cell.replace(/^"|"$/g, '').trim();
+
+const MAX_CSV_ROWS = 5000;
+
 export const parseJournalCSV = (csvContent: string): Journal[] => {
-    console.warn("Função CSV legada chamada");
-    return []; 
+  if (!csvContent.trim()) return [];
+  const lines = csvContent.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+
+  if (lines.length - 1 > MAX_CSV_ROWS) {
+    throw new Error('Arquivo CSV excede o limite de 5000 linhas para importação segura.');
+  }
+
+  const delimiter = lines[0].includes(';') && !lines[0].includes(',') ? ';' : ',';
+  const headers = lines[0].split(delimiter).map(cleanCell);
+
+  const hasJournalColumn = headers.some((header) => header.toUpperCase() === 'JOURNAL');
+  if (!hasJournalColumn) {
+    throw new Error('CSV inválido: coluna JOURNAL é obrigatória.');
+  }
+
+  const rawRows: RawJournalData[] = [];
+
+  for (const line of lines.slice(1)) {
+    if (!line.trim()) continue;
+    const cells = line.split(delimiter).map(cleanCell);
+    const record: Record<string, string> = {};
+
+    headers.forEach((header, index) => {
+      record[header] = cells[index] ?? '';
+    });
+
+    rawRows.push(record as RawJournalData);
+  }
+
+  return mapJournalsFromJson(rawRows);
 };

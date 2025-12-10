@@ -33,17 +33,18 @@ const JournalModal: React.FC<JournalModalProps> = ({ journal, onClose, onSubmitT
     e.preventDefault();
     if (!topic.trim()) return;
 
-    // Google Scholar search: source:"Journal Name" "Topic"
-    const query = `source:"${journal.journal_name}" "${topic}"`;
-    const url = `https://scholar.google.com/scholar?q=${encodeURIComponent(query)}`;
-    
+    const query = `${journal.journal_name} ${topic}`;
+    const url = `https://www.semanticscholar.org/search?q=${encodeURIComponent(query)}`;
+
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const handleSubmitAction = () => {
-    // Abre a busca no Google
-    window.open(`https://www.google.com/search?q=${encodeURIComponent(journal.journal_name)}`, '_blank');
-    // Navega para submissão
+    window.open(
+      `https://duckduckgo.com/?q=${encodeURIComponent(journal.journal_name + ' submission guidelines')}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
     onSubmitToJournal(journal.journal_name);
   };
 
@@ -143,12 +144,12 @@ const JournalModal: React.FC<JournalModalProps> = ({ journal, onClose, onSubmitT
                   Submeter
                 </button>
                 <a
-                  href={`https://scholar.google.com/scholar?q=source:"${journal.journal_name}"`}
+                  href={`https://www.semanticscholar.org/search?q=${encodeURIComponent(journal.journal_name)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:w-auto sm:text-sm dark:bg-slate-800 dark:text-gray-300 dark:border-slate-600 dark:hover:bg-slate-700"
                 >
-                  Google Scholar
+                  Semantic Scholar
                 </a>
                 <button
                   onClick={() => setShowTopicSearch(true)}
@@ -157,12 +158,12 @@ const JournalModal: React.FC<JournalModalProps> = ({ journal, onClose, onSubmitT
                   Verificar Tópico
                 </button>
                 <a
-                  href={`https://www.google.com/search?q=${encodeURIComponent(journal.journal_name + " length words")}`}
+                  href={`https://duckduckgo.com/?q=${encodeURIComponent(journal.journal_name + ' word limit guidelines')}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:w-auto sm:text-sm dark:bg-slate-800 dark:text-gray-300 dark:border-slate-600 dark:hover:bg-slate-700"
                 >
-                  Limite Palavras
+                  Limite de Palavras
                 </a>
               </div>
             ) : (
