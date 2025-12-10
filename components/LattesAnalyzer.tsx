@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
+import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { LattesProfile, LattesArticle, LattesTechProduct, LattesGeneralSection, CapesRating, Journal, LattesAuthor } from '../types';
 
 // PDF.js worker setup
@@ -8,7 +9,7 @@ const pdfjsModule = pdfjsLib as any;
 const pdfjs = pdfjsModule.default ?? pdfjsModule;
 
 if (pdfjs.GlobalWorkerOptions) {
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js`;
+  pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 }
 
 // Helper function to render CAPES badge
