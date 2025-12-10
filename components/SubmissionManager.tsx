@@ -1,60 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Submission, SubmissionStatus, RevisionRound, ReviewPoint } from '../types';
-
-const initialSubmissions: Submission[] = [
-  {
-    id: '1',
-    journalName: 'Academy of Management Journal',
-    paperTitle: 'Strategic Dynamics in Emerging Markets',
-    submissionDate: '2023-11-15',
-    status: SubmissionStatus.UNDER_REVIEW,
-    notes: 'Aguardando parecer da primeira rodada.',
-    revisions: [],
-    sharedEmails: 'coauthor1@univ.edu, advisor@univ.edu',
-    shareLink: 'https://journalscope.app/s/share_xyz123'
-  },
-  {
-    id: '2',
-    journalName: 'Tourism Management',
-    paperTitle: 'Sustainable Tourism in Coastal Areas',
-    submissionDate: '2023-10-01',
-    status: SubmissionStatus.REVISE_RESUBMIT,
-    notes: 'Prazo para R&R: 15/01/2024',
-    revisions: [
-      {
-        id: 'rev-1',
-        roundNumber: 1,
-        receivedDate: '2023-11-20',
-        deadline: '2024-01-15',
-        points: [
-          { id: 'p1', reviewerName: 'Revisor 1', request: 'Expandir a revisão de literatura sobre sustentabilidade.', response: 'Adicionados 5 novos parágrafos na seção 2.', isResolved: true },
-          { id: 'p2', reviewerName: 'Revisor 2', request: 'Clarificar a metodologia de coleta de dados.', response: '', isResolved: false }
-        ]
-      }
-    ],
-    sharedEmails: '',
-    shareLink: 'https://journalscope.app/s/share_abc987'
-  },
-  {
-    id: '3',
-    journalName: 'Journal of Marketing',
-    paperTitle: 'Consumer Behavior in the AI Era',
-    submissionDate: '2023-12-05',
-    status: SubmissionStatus.SUBMITTED,
-    notes: '',
-    revisions: [],
-    sharedEmails: '',
-    shareLink: 'https://journalscope.app/s/share_def456'
-  }
-];
+import { getUserSubmissions, saveUserSubmissions } from '../services/auth';
 
 interface SubmissionManagerProps {
   initialJournalName?: string | null;
   onClearInitialJournal?: () => void;
+  userEmail: string;
+  onLogout: () => void;
 }
 
-const SubmissionManager: React.FC<SubmissionManagerProps> = ({ initialJournalName, onClearInitialJournal }) => {
-  const [submissions, setSubmissions] = useState<Submission[]>(initialSubmissions);
+const SubmissionManager: React.FC<SubmissionManagerProps> = ({ initialJournalName, onClearInitialJournal, userEmail, onLogout }) => {
+  const [submissions, setSubmissions] = useState<Submission[]>(() => getUserSubmissions(userEmail));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'revisions' | 'share'>('details');
@@ -75,6 +31,10 @@ const SubmissionManager: React.FC<SubmissionManagerProps> = ({ initialJournalNam
   const generateShareLink = () => {
     return `https://journalscope.app/s/${Math.random().toString(36).substring(2, 15)}`;
   };
+
+  useEffect(() => {
+    setSubmissions(getUserSubmissions(userEmail));
+  }, [userEmail]);
 
   useEffect(() => {
     if (initialJournalName) {
@@ -122,21 +82,33 @@ const SubmissionManager: React.FC<SubmissionManagerProps> = ({ initialJournalNam
 
   const handleDelete = (id: string) => {
     if (window.confirm('Tem certeza que deseja remover esta submissão?')) {
-      setSubmissions(prev => prev.filter(s => s.id !== id));
+      setSubmissions(prev => {
+        const updated = prev.filter(s => s.id !== id);
+        saveUserSubmissions(userEmail, updated);
+        return updated;
+      });
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (editingId) {
-      setSubmissions(prev => prev.map(s => s.id === editingId ? { ...formData, id: editingId } : s));
+      setSubmissions(prev => {
+        const updated = prev.map(s => s.id === editingId ? { ...formData, id: editingId } : s);
+        saveUserSubmissions(userEmail, updated);
+        return updated;
+      });
     } else {
       const newSubmission: Submission = {
         ...formData,
         id: Date.now().toString()
       };
-      setSubmissions(prev => [newSubmission, ...prev]);
+      setSubmissions(prev => {
+        const updated = [newSubmission, ...prev];
+        saveUserSubmissions(userEmail, updated);
+        return updated;
+      });
     }
     setIsModalOpen(false);
   };
@@ -231,17 +203,28 @@ const SubmissionManager: React.FC<SubmissionManagerProps> = ({ initialJournalNam
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Minhas Submissões</h2>
-        <button
-          onClick={() => handleOpenModal()}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-        >
-          <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Nova Submissão
-        </button>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Minhas Submissões</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Acesso de {userEmail}</p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={onLogout}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-slate-600 text-sm font-medium rounded-md shadow-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-700 hover:bg-gray-50 dark:hover:bg-slate-600"
+          >
+            Sair
+          </button>
+          <button
+            onClick={() => handleOpenModal()}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+          >
+            <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Nova Submissão
+          </button>
+        </div>
       </div>
 
       <div className="bg-white dark:bg-slate-800 shadow overflow-hidden sm:rounded-lg border border-gray-200 dark:border-slate-700">
